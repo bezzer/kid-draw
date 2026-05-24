@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kiddraw",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "source ~/.nvm/nvm.sh && nvm use 22 --silent && npm run dev -- --port 5173"],
+      "port": 5173
+    }
+  ]
+}
