@@ -44,6 +44,7 @@ function renderOp(
   ctx: CanvasRenderingContext2D,
   op: DrawOp,
   imgCache: Map<string, HTMLImageElement>,
+  view?: { scale: number; panX: number; panY: number },
 ) {
   ctx.save()
   ctx.globalAlpha = 1
@@ -52,10 +53,21 @@ function renderOp(
   if (op.type === 'sticker') {
     const img = imgCache.get(op.url)
     if (img?.complete && img.naturalWidth > 0) {
-      const sz = 90
-      ctx.translate(op.x, op.y)
-      ctx.rotate(op.rotation)
-      ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz)
+      const nomSz = 90
+      if (view) {
+        // Draw in screen space so SVG is rasterised at the exact pixel size needed
+        const sx = op.x * view.scale + view.panX
+        const sy = op.y * view.scale + view.panY
+        const screenSz = nomSz * view.scale
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.translate(sx, sy)
+        ctx.rotate(op.rotation)
+        ctx.drawImage(img, -screenSz / 2, -screenSz / 2, screenSz, screenSz)
+      } else {
+        ctx.translate(op.x, op.y)
+        ctx.rotate(op.rotation)
+        ctx.drawImage(img, -nomSz / 2, -nomSz / 2, nomSz, nomSz)
+      }
     }
     ctx.restore()
     return
@@ -328,8 +340,9 @@ const DrawingCanvas = forwardRef<CanvasHandle, Props>(
         offCtx.save()
         offCtx.setTransform(sc, 0, 0, sc, px, py)
 
+        const view = { scale: sc, panX: px, panY: py }
         for (const op of opsRef.current) {
-          renderOp(offCtx, op, imgCache.current)
+          renderOp(offCtx, op, imgCache.current, view)
         }
 
         // Current in-progress stroke

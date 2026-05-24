@@ -63,5 +63,5 @@ export function emojiToTwemojiUrl(emoji: string): string {
     }
   }
   const path = codePoints.join('-')
-  return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${path}.png`
+  return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${path}.svg`
 }
