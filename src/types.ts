@@ -1,4 +1,4 @@
-export type ToolType = 'crayon' | 'brush' | 'magic' | 'eraser' | 'pan'
+export type ToolType = 'crayon' | 'brush' | 'magic' | 'eraser' | 'pan' | 'sticker'
 export type BrushSize = 'small' | 'medium' | 'large'
 
 export interface Point { x: number; y: number }
@@ -16,6 +16,7 @@ export interface StickerOp {
   url: string
   x: number
   y: number
+  rotation: number
 }
 
 export type DrawOp = PathOp | StickerOp

@@ -8,7 +8,6 @@ interface Props {
   ops: DrawOp[]
   addOp: (op: DrawOp) => void
   selectedSticker: string | null
-  onStickerPlaced: () => void
 }
 
 export interface CanvasHandle {
@@ -54,7 +53,9 @@ function renderOp(
     const img = imgCache.get(op.url)
     if (img?.complete && img.naturalWidth > 0) {
       const sz = 90
-      ctx.drawImage(img, op.x - sz / 2, op.y - sz / 2, sz, sz)
+      ctx.translate(op.x, op.y)
+      ctx.rotate(op.rotation)
+      ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz)
     }
     ctx.restore()
     return
@@ -206,7 +207,7 @@ function drawStickerCursor(
 
 // ────────────────────────────────────────────────────────────────────────────
 const DrawingCanvas = forwardRef<CanvasHandle, Props>(
-  ({ tool, color, brushSizeValue, ops, addOp, selectedSticker, onStickerPlaced }, ref) => {
+  ({ tool, color, brushSizeValue, ops, addOp, selectedSticker }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const offRef = useRef<HTMLCanvasElement | null>(null)
@@ -237,8 +238,9 @@ const DrawingCanvas = forwardRef<CanvasHandle, Props>(
     const colorRef = useRef(color)
     const sizeRef = useRef(brushSizeValue)
     const selectedStickerRef = useRef(selectedSticker)
-    const onStickerPlacedRef = useRef(onStickerPlaced)
     const addOpRef = useRef(addOp)
+    const isStickerDown = useRef(false)
+    const lastStickerScreen = useRef({ x: 0, y: 0 })
     const opsRef = useRef(ops)
     const imgCache = useRef(new Map<string, HTMLImageElement>())
     const dirty = useRef(true)
@@ -247,7 +249,6 @@ const DrawingCanvas = forwardRef<CanvasHandle, Props>(
     useEffect(() => { colorRef.current = color }, [color])
     useEffect(() => { sizeRef.current = brushSizeValue }, [brushSizeValue])
     useEffect(() => { selectedStickerRef.current = selectedSticker; dirty.current = true }, [selectedSticker])
-    useEffect(() => { onStickerPlacedRef.current = onStickerPlaced }, [onStickerPlaced])
     useEffect(() => { addOpRef.current = addOp }, [addOp])
 
     useEffect(() => {
@@ -381,12 +382,13 @@ const DrawingCanvas = forwardRef<CanvasHandle, Props>(
           return
         }
 
-        const world = toWorld(e.clientX, e.clientY)
-
         // Place sticker
         if (selectedStickerRef.current) {
-          addOpRef.current({ type: 'sticker', url: selectedStickerRef.current, x: world.x, y: world.y })
-          onStickerPlacedRef.current()
+          const world = toWorld(e.clientX, e.clientY)
+          const rotation = (Math.random() * 40 - 20) * (Math.PI / 180)
+          addOpRef.current({ type: 'sticker', url: selectedStickerRef.current, x: world.x, y: world.y, rotation })
+          isStickerDown.current = true
+          lastStickerScreen.current = { x: e.clientX, y: e.clientY }
           return
         }
 
@@ -398,8 +400,9 @@ const DrawingCanvas = forwardRef<CanvasHandle, Props>(
         }
 
         // Draw
+        const drawWorld = toWorld(e.clientX, e.clientY)
         isDrawing.current = true
-        currentPath.current = [world]
+        currentPath.current = [drawWorld]
         dirty.current = true
       }
 
@@ -411,6 +414,18 @@ const DrawingCanvas = forwardRef<CanvasHandle, Props>(
         const rect = canvas.getBoundingClientRect()
         mousePos.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
         if (selectedStickerRef.current) dirty.current = true
+
+        // Sticker trail while dragging
+        if (isStickerDown.current && selectedStickerRef.current) {
+          const dx = e.clientX - lastStickerScreen.current.x
+          const dy = e.clientY - lastStickerScreen.current.y
+          if (Math.hypot(dx, dy) >= 65) {
+            const world = toWorld(e.clientX, e.clientY)
+            const rotation = (Math.random() * 40 - 20) * (Math.PI / 180)
+            addOpRef.current({ type: 'sticker', url: selectedStickerRef.current, x: world.x, y: world.y, rotation })
+            lastStickerScreen.current = { x: e.clientX, y: e.clientY }
+          }
+        }
 
         if (isPinching.current && activePointers.current.size >= 2) {
           handlePinch()
@@ -432,6 +447,7 @@ const DrawingCanvas = forwardRef<CanvasHandle, Props>(
 
       function onPointerUp(e: PointerEvent) {
         activePointers.current.delete(e.pointerId)
+        isStickerDown.current = false
 
         if (isDrawing.current && activePointers.current.size === 0) {
           if (currentPath.current.length >= 1) {

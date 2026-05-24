@@ -57,7 +57,7 @@ export default function App() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo() }
-      if (e.key === 'Escape') { setSelectedSticker(null); setShowClearConfirm(false) }
+      if (e.key === 'Escape') { setSelectedSticker(null); setTool('crayon'); setShowClearConfirm(false) }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -151,16 +151,6 @@ export default function App() {
 
       {/* ── Main area ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
-        <Toolbar
-          tool={tool}
-          setTool={(t) => { setTool(t); setSelectedSticker(null) }}
-          color={color}
-          setColor={setColor}
-          brushSize={brushSize}
-          setBrushSize={setBrushSize}
-          onOpenStickers={() => setStickerPanelOpen(true)}
-        />
-
         <DrawingCanvas
           ref={canvasRef}
           tool={tool}
@@ -169,9 +159,25 @@ export default function App() {
           ops={ops}
           addOp={addOp}
           selectedSticker={selectedSticker}
-          onStickerPlaced={() => setSelectedSticker(null)}
         />
       </div>
+
+      <Toolbar
+        tool={tool}
+        setTool={(t) => {
+          if (t === 'sticker') {
+            setTool('sticker')
+            setStickerPanelOpen(true)
+          } else {
+            setTool(t)
+            setSelectedSticker(null)
+          }
+        }}
+        color={color}
+        setColor={setColor}
+        brushSize={brushSize}
+        setBrushSize={setBrushSize}
+      />
 
       {/* ── Sticker panel ── */}
       <StickerPanel
